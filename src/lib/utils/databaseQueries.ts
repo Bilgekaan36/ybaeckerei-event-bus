@@ -1,6 +1,6 @@
-export const dbMigrationQueries = async (pool: any) => {
-  await pool.query(`create extension if not exists "uuid-ossp";`);
-  await pool.query(
+export const dbMigrationQueries = async (client: any) => {
+  await client.query(`create extension if not exists "uuid-ossp";`);
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Store"
     (
         "storeId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -10,7 +10,7 @@ export const dbMigrationQueries = async (pool: any) => {
         city VARCHAR(255) NOT NULL
     );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Billboard"
     (
         "billboardId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(), 
@@ -19,7 +19,7 @@ export const dbMigrationQueries = async (pool: any) => {
     );`
   );
 
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Category"
     (
         "categoryId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(), 
@@ -29,7 +29,7 @@ export const dbMigrationQueries = async (pool: any) => {
     );`
   );
 
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Image"
     (
         "imageId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(), 
@@ -37,7 +37,7 @@ export const dbMigrationQueries = async (pool: any) => {
         "imageUrl" VARCHAR(255) NOT NULL
     );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "BillboardImage"
     (
         "billboardId" UUID,
@@ -46,14 +46,14 @@ export const dbMigrationQueries = async (pool: any) => {
         FOREIGN KEY ("imageId") REFERENCES "Image"("imageId")
     );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Variant"
       (
         "variantId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         "variantTitle" VARCHAR(255) NOT NULL
       );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Size"
     (
         "sizeId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -61,7 +61,7 @@ export const dbMigrationQueries = async (pool: any) => {
         "sizeType" VARCHAR(255) NOT NULL
     );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Product" 
       (
         "productId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -75,7 +75,7 @@ export const dbMigrationQueries = async (pool: any) => {
         FOREIGN KEY ("categoryId") REFERENCES "Category"("categoryId")
       );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "ProductSize"
     (
         "productId" UUID,
@@ -84,7 +84,7 @@ export const dbMigrationQueries = async (pool: any) => {
         FOREIGN KEY ("sizeId") REFERENCES "Size"("sizeId")
     );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "ProductVariant"
     (
         "productId" UUID,
@@ -93,7 +93,7 @@ export const dbMigrationQueries = async (pool: any) => {
         FOREIGN KEY ("variantId") REFERENCES "Variant"("variantId")
     );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "ProductImage"
     (
         "productId" UUID,
@@ -102,7 +102,7 @@ export const dbMigrationQueries = async (pool: any) => {
         FOREIGN KEY ("imageId") REFERENCES "Image"("imageId")
     );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Customer"
     (
         "customerId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -115,49 +115,49 @@ export const dbMigrationQueries = async (pool: any) => {
     );`
   );
 
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "OrderStatus"
     (
         "statusId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         "statusTitle" VARCHAR(255)
     );`
   );
-  await pool.query(
+  await client.query(
     `INSERT INTO "OrderStatus"("statusTitle") SELECT 'Ordered'
         WHERE NOT EXISTS 
         (
             SELECT 1 FROM "OrderStatus" WHERE "statusTitle"='Ordered'
         );`
   );
-  await pool.query(
+  await client.query(
     `INSERT INTO "OrderStatus"("statusTitle") SELECT 'Preparation'
         WHERE NOT EXISTS 
         (
             SELECT 1 FROM "OrderStatus" WHERE "statusTitle"='Preparation'
         );`
   );
-  await pool.query(
+  await client.query(
     `INSERT INTO "OrderStatus"("statusTitle") SELECT 'Collection'
         WHERE NOT EXISTS 
         (
             SELECT 1 FROM "OrderStatus" WHERE "statusTitle"='Collection'
         );`
   );
-  await pool.query(
+  await client.query(
     `INSERT INTO "OrderStatus"("statusTitle") SELECT 'Picked Up'
         WHERE NOT EXISTS 
         (
             SELECT 1 FROM "OrderStatus" WHERE "statusTitle"='Picked Up'
         );`
   );
-  await pool.query(
+  await client.query(
     `INSERT INTO "OrderStatus"("statusTitle") SELECT 'Canceled'
         WHERE NOT EXISTS 
         (
             SELECT 1 FROM "OrderStatus" WHERE "statusTitle"='Canceled'
         );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Order"
     (
         "orderId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -170,7 +170,7 @@ export const dbMigrationQueries = async (pool: any) => {
         "updatedAt" TIMESTAMPTZ DEFAULT NOW()
     );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "OrderItem"
     (
         "orderItemId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -182,7 +182,7 @@ export const dbMigrationQueries = async (pool: any) => {
         subtotal DECIMAL(10, 2) NOT NULL
     );`
   );
-  await pool.query(
+  await client.query(
     `CREATE TABLE IF NOT EXISTS "Review"
     (
         "reviewId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
