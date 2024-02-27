@@ -1,5 +1,25 @@
 export const dbMigrationQueries = async (client: any) => {
   await client.query(`create extension if not exists "uuid-ossp";`);
+
+  await client.query(`
+  CREATE TABLE IF NOT EXISTS "Event" (
+    "eventId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "streamId" VARCHAR(255) NOT NULL,
+    version BIGINT NOT NULL,
+    data JSONB NOT NULL,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE ("streamId", version)
+  )
+`);
+
+  await client.query(`
+  CREATE TABLE IF NOT EXISTS "Snapshot" (
+    "streamId" VARCHAR(255) NOT NULL,
+    version BIGINT NOT NULL,
+    state JSONB
+  )
+`);
+
   await client.query(
     `CREATE TABLE IF NOT EXISTS "Store"
     (

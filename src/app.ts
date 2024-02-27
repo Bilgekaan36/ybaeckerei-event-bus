@@ -14,7 +14,7 @@ import { PostgresqlDbStore } from './lib/store/PostgresqlDbStore';
 
 const serverAdapter = new ExpressAdapter();
 // Reuse the ioredis instance
-const eventQueue = new Queue('eventqueue', {
+const eventQueue = new Queue('eventQueue', {
   connection: redisConnection,
 });
 
@@ -38,52 +38,6 @@ const store = new PostgresqlDbStore({
     serverAdapter: serverAdapter,
   });
 
-  const eventHandlers: Record<string, any> = {
-    BillboardRegistered: (state: any, event: any) => {
-      state = state || { items: [], version: 0 };
-      const billboard = {
-        billboardTitle: event.data.billboardTitle,
-        billboardImageUrl: event.data.billboardImageUrl,
-      };
-      // Check if the billboard with the same title is already included
-      const isBillboardIncluded = state.items.some(
-        (b: { billboardTitle: string }) =>
-          b.billboardTitle === billboard.billboardTitle
-      );
-
-      if (!isBillboardIncluded) {
-        // If the billboard is not included, add it
-        state.items = [...state.items, billboard];
-        state.version = event.version;
-      } else {
-        console.error(
-          `Billboard with title '${billboard.billboardTitle}' already included.`
-        );
-      }
-      return state;
-    },
-    BillboardRemoved: (state: any, event: any) => {
-      state = state || { items: [], version: 0 };
-      if (event.version !== state.version) {
-        const indexToRemove = state.items.lastIndexOf(event.data.eventData);
-
-        if (indexToRemove !== -1) {
-          state.items.splice(indexToRemove, 1);
-          state.version = event.version;
-        } else {
-          console.error(`Item not found in the items array.`);
-          // store.storeEvent(streamId, {
-          //   eventType: 'RemoveItemFailed',
-          //   item_name: 'ProductC',
-          // });
-        }
-      } else {
-        console.error(`Concurrent event detected for stream ${event.streamId}`);
-      }
-      return state;
-    },
-  };
-
   const api = express();
 
   const handleJobs = async (job: any) => {
@@ -91,14 +45,13 @@ const store = new PostgresqlDbStore({
     console.log(`Processing event: ${type}`);
     // Your processing logic here
     const applyEvent = async () => {
-      await store.storeEvent(streamId, { type, ...data }),
-        await store.applyEventsAndUpdateState(streamId, eventHandlers);
+      await store.storeEvent(streamId, { type, ...data });
     };
     applyEvent();
   };
 
   // Worker instance for incoming events from eventqueue
-  const workerInstance = new Worker('eventqueue', handleJobs, {
+  const workerInstance = new Worker('eventQueue', handleJobs, {
     connection: redisConnection,
   });
 

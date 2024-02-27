@@ -159,7 +159,7 @@ export function registrationMethods<T extends Constructor>(
       const client = await this.pool.connect();
 
       try {
-        await client.query('BEGIN');
+        await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
 
         // SQL query for SELECT to check for existing data
         const selectQuery = `
@@ -185,13 +185,12 @@ export function registrationMethods<T extends Constructor>(
           await client.query(insertQuery, [billboardTitle, billboardImageUrl]);
           console.log('Billboard successfully registered.');
         } else {
-          console.log('Billboard already exists.');
+          // console.log('Billboard already exists.');
         }
 
         await client.query('COMMIT');
-      } catch (error) {
+      } catch (error: any) {
         await client.query('ROLLBACK');
-        //@ts-ignore
         console.error('Error registering billboard:', error.message);
       } finally {
         client.release();
