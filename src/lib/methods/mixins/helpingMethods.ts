@@ -71,12 +71,75 @@ export function helpingMethods<T extends Constructor>(
           case 'BillboardRegistered':
             for (const item of items) {
               const { billboardTitle, billboardImageUrl } = item;
-              this.registerBillboard({ billboardTitle, billboardImageUrl });
+              await this.registerBillboard({
+                billboardTitle,
+                billboardImageUrl,
+              });
+            }
+            break;
+          case 'CategoryRegistered':
+            for (const item of items) {
+              const { categoryName, billboardId } = item;
+              await this.registerCategory({ categoryName, billboardId });
             }
             break;
         }
       } catch (error: any) {
         console.error('Error creating/updating stream table:', error.message);
+      } finally {
+        client.release();
+      }
+    }
+
+    async getSnapshot(streamId: string): Promise<any> {
+      const client = await this.pool.connect();
+      try {
+        const result = await client.query(
+          'SELECT * FROM "Snapshot" WHERE "streamId" = $1',
+          [streamId]
+        );
+
+        if (result.rows.length > 0) {
+          return result.rows[0];
+        } else {
+          return null;
+        }
+      } catch (error: any) {
+        console.error('Error getting snapshot:', error.message);
+      } finally {
+        client.release();
+      }
+    }
+
+    async createOrUpdateStreamTableBySnapshot(
+      snapshot: any,
+      items: any[]
+    ): Promise<void> {
+      const client = await this.pool.connect();
+      try {
+        let streamId = snapshot.streamId;
+        switch (streamId) {
+          case 'Billboard':
+            for (const item of items) {
+              const { billboardTitle, billboardImageUrl } = item;
+              await this.registerBillboard({
+                billboardTitle,
+                billboardImageUrl,
+              });
+            }
+            break;
+          case 'Category':
+            for (const item of items) {
+              const { categoryName, billboardId } = item;
+              await this.registerCategory({ categoryName, billboardId });
+            }
+            break;
+        }
+      } catch (error: any) {
+        console.error(
+          'Error creating/updating stream table by snapshot state:',
+          error.message
+        );
       } finally {
         client.release();
       }

@@ -1,7 +1,8 @@
 import { Event } from 'lib/types/event';
+import { State } from 'lib/types/state';
 
 export const eventHandlers: Record<string, any> = {
-  BillboardRegistered: (state: any, event: Event) => {
+  BillboardRegistered: (state: State, event: Event) => {
     state = state || { items: [], version: 0 };
     const billboard = {
       billboardTitle: event.data.billboardTitle,
@@ -40,6 +41,28 @@ export const eventHandlers: Record<string, any> = {
       }
     } else {
       console.error(`Concurrent event detected for stream ${event.streamId}`);
+    }
+    state.version = event.version;
+    return state;
+  },
+  CategoryRegistered: (state: any, event: Event) => {
+    state = state || { items: [], version: 0 };
+    const category = {
+      categoryName: event.data.categoryName,
+      billboardId: event.data.billboardId,
+    };
+    // Check if the category with the same title is already included
+    const isCategoryIncluded = state.items.some(
+      (b: { categoryName: string }) => b.categoryName === category.categoryName
+    );
+
+    if (!isCategoryIncluded) {
+      // If the category is not included, add it
+      state.items = [...state.items, category];
+    } else {
+      console.error(
+        `Category with title '${category.categoryName}' already included.`
+      );
     }
     state.version = event.version;
     return state;

@@ -49,33 +49,6 @@ export function registrationMethods<T extends Constructor>(
       }
     }
 
-    async registerCategory({ categoryName, billboardId }: ICategory) {
-      // SQL query for SELECT to check for existing data
-      const selectQuery = `
-          SELECT "categoryName"
-          FROM "Category"
-          WHERE "categoryName" = $1;
-          `;
-
-      // SQL query for INSERT
-      const insertQuery = `
-          INSERT INTO "Category"("categoryName", "billboardId") 
-          VALUES ($1, $2)
-          `;
-
-      // Execute the SELECT query
-      const foundedCategory = await this.pool.query(selectQuery, [
-        categoryName,
-      ]);
-      // Check if data already exists
-      if (foundedCategory.rows.length > 0) {
-        throw new Error('Category already exists.');
-      } else {
-        // Execute the INSERT query if data doesn't exist
-        await this.pool.query(insertQuery, [categoryName, billboardId]);
-      }
-    }
-
     async registerVariant({ variantTitle }: IVariant) {
       // SQL query for SELECT to check for existing data
       const selectQuery = `
@@ -184,14 +157,46 @@ export function registrationMethods<T extends Constructor>(
           // Execute the INSERT query
           await client.query(insertQuery, [billboardTitle, billboardImageUrl]);
           console.log('Billboard successfully registered.');
-        } else {
-          // console.log('Billboard already exists.');
         }
-
         await client.query('COMMIT');
       } catch (error: any) {
         await client.query('ROLLBACK');
         console.error('Error registering billboard:', error.message);
+      } finally {
+        client.release();
+      }
+    }
+
+    async registerCategory({ categoryName, billboardId }: ICategory) {
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+
+        // SQL query for SELECT to check for existing data
+        const selectQuery = `
+          SELECT "categoryName", "billboardId"
+          FROM "Category"
+          WHERE "categoryName" = $1
+          FOR UPDATE;
+        `;
+
+        const selectResult = await client.query(selectQuery, [categoryName]);
+
+        if (selectResult.rows.length === 0) {
+          // SQL query for INSERT
+          const insertQuery = `
+          INSERT INTO "Category"("categoryName", "billboardId") 
+          VALUES ($1, $2)
+          `;
+
+          // Execute the INSERT query
+          await client.query(insertQuery, [categoryName, billboardId]);
+          console.log('Category successfully registered.');
+        }
+        await client.query('COMMIT');
+      } catch (error: any) {
+        await client.query('ROLLBACK');
+        console.error('Error registering category:', error.message);
       } finally {
         client.release();
       }
