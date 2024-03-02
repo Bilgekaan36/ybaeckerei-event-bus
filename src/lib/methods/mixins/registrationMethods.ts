@@ -138,14 +138,11 @@ export function registrationMethods<T extends Constructor>(
         const selectQuery = `
           SELECT "billboardTitle", "billboardImageUrl"
           FROM "Billboard"
-          WHERE "billboardTitle" = $1 AND "billboardImageUrl" = $2
+          WHERE "billboardTitle" = $1
           FOR UPDATE;
         `;
 
-        const selectResult = await client.query(selectQuery, [
-          billboardTitle,
-          billboardImageUrl,
-        ]);
+        const selectResult = await client.query(selectQuery, [billboardTitle]);
 
         if (selectResult.rows.length === 0) {
           // SQL query for INSERT

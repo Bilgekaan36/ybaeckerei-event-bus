@@ -18,8 +18,8 @@ export const eventHandlers: Record<string, any> = {
       // If the billboard is not included, add it
       state.items = [...state.items, billboard];
     } else {
-      console.error(
-        `Billboard with title '${billboard.billboardTitle}' already included.`
+      state.items = state.items.map((item: { billboardTitle: string }) =>
+        item.billboardTitle === billboard.billboardTitle ? billboard : item
       );
     }
     state.version = event.version;
@@ -45,7 +45,7 @@ export const eventHandlers: Record<string, any> = {
     state.version = event.version;
     return state;
   },
-  CategoryRegistered: (state: any, event: Event) => {
+  CategoryRegistered: (state: State, event: Event) => {
     state = state || { items: [], version: 0 };
     const category = {
       categoryName: event.data.categoryName,
@@ -60,8 +60,8 @@ export const eventHandlers: Record<string, any> = {
       // If the category is not included, add it
       state.items = [...state.items, category];
     } else {
-      console.error(
-        `Category with title '${category.categoryName}' already included.`
+      state.items = state.items.map((item: { categoryName: string }) =>
+        item.categoryName === category.categoryName ? category : item
       );
     }
     state.version = event.version;
