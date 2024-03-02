@@ -11,6 +11,7 @@ import { BullAdapter } from '@bull-board/api/bullAdapter';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { PostgresqlDbStore } from './lib/store/PostgresqlDbStore';
+import { EventJob } from 'lib/types/event-sourcing/event-job';
 
 const serverAdapter = new ExpressAdapter();
 // Reuse the ioredis instance
@@ -40,9 +41,8 @@ const store = new PostgresqlDbStore({
 
   const api = express();
 
-  const handleJobs = async (job: any) => {
+  const handleJobs = async (job: EventJob) => {
     const { streamId, data, type } = job.data;
-    console.log(`Processing event: ${type}`);
     // Your processing logic here
     const applyEvent = async () => {
       await store.storeEvent(streamId, { type, ...data });
