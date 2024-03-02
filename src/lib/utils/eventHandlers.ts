@@ -1,5 +1,5 @@
-import { Event } from 'lib/types/event';
-import { State } from 'lib/types/state';
+import { Event } from 'lib/types/event-sourcing/event';
+import { State } from 'lib/types/event-sourcing/state';
 
 export const eventHandlers: Record<string, any> = {
   BillboardRegistered: (state: State, event: Event) => {
@@ -25,7 +25,7 @@ export const eventHandlers: Record<string, any> = {
     state.version = event.version;
     return state;
   },
-  BillboardRemoved: (state: any, event: Event) => {
+  BillboardRemoved: (state: State, event: Event) => {
     state = state || { items: [], version: 0 };
     if (event.version !== state.version) {
       const indexToRemove = state.items.lastIndexOf(event.data.eventData);

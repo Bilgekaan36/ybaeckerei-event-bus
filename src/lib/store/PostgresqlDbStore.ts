@@ -4,7 +4,9 @@ import { editMethods } from '../methods/mixins/editMethods';
 import { removeMethods } from '../methods/mixins/removeMethods';
 import { helpingMethods } from '../methods/mixins/helpingMethods';
 import { eventHandlers } from '../utils/eventHandlers';
-import { State } from 'lib/types/state';
+import { State } from 'lib/types/event-sourcing/state';
+import { Event } from 'lib/types/event-sourcing/event';
+import { StreamId } from 'lib/types/utility-types';
 
 const mixinMethods = helpingMethods(
   registrationMethods(editMethods(removeMethods(class {})))
@@ -29,8 +31,8 @@ export class PostgresqlDbStore extends mixinMethods {
     await this.createTables();
   }
 
-  // ----------- Event sourcing methods begins here ------------
-  async storeEvent(streamId: string, data: any): Promise<void> {
+  // ----------- Event sourcing main methods begins here ------------
+  async storeEvent(streamId: StreamId, data: any): Promise<void> {
     const client = await this.pool.connect();
 
     try {
@@ -55,13 +57,13 @@ export class PostgresqlDbStore extends mixinMethods {
   }
 
   async applyEventsAndUpdateState(
-    streamId: string,
+    streamId: StreamId,
     eventHandlers: Record<string, any>
   ): Promise<void> {
     const client = await this.pool.connect();
 
     try {
-      let currentState: State = { items: [], version: 0 };
+      let currentState: State | null = null;
 
       // Check for existing snapshot for the given streamId
       const snapshotResult = await client.query(
@@ -75,15 +77,16 @@ export class PostgresqlDbStore extends mixinMethods {
       }
 
       // Determine the snapshot version (if snapshot exists)
-      const snapshotVersion = currentState ? currentState.version : 0;
+      let snapshotVersion = currentState ? currentState.version : 0;
+
       // Query events for the given streamId starting from the version after the snapshot
       const result = await client.query(
-        'SELECT * FROM "Event" WHERE "streamId" = $1 AND version > $2 ORDER BY version',
+        'SELECT * FROM "Event" WHERE "streamId" = $1 AND version >= $2 ORDER BY version',
         [streamId, snapshotVersion]
       );
 
       for (const row of result.rows) {
-        const event = {
+        const event: Event = {
           version: row.version,
           data: row.data,
         };
@@ -102,17 +105,26 @@ export class PostgresqlDbStore extends mixinMethods {
             currentState.version,
             currentState
           );
+          snapshotVersion = currentState.version; // Update snapshotVersion to the new version
           console.log(
             `Created snapshot for stream ${streamId} at version ${currentState.version}`
           );
-        } else if (row.version > snapshotVersion) {
-          // Only call createOrUpdateStreamTable for non-snapshot events
+        }
+
+        if (
+          currentState !== null &&
+          row.version >= snapshotVersion &&
+          row.version >= currentState.version
+        ) {
+          // Only call createOrUpdateStreamTable for non-snapshot events and versions that haven't been processed
           await this.createOrUpdateStreamTable(
             row.data.type,
-            currentState.items
+            currentState?.items
           );
         } else {
-          console.log(`Current state is null for stream ${streamId}`);
+          console.log(
+            `Current state is null or version already processed for stream ${streamId}`
+          );
         }
       }
     } catch (error: any) {
@@ -122,5 +134,5 @@ export class PostgresqlDbStore extends mixinMethods {
     }
   }
 
-  // ----------- Event sourcing methods ends here ------------
+  // ----------- Event sourcing main methods ends here ------------
 }

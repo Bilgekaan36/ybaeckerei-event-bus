@@ -1,4 +1,6 @@
+import { EventType, StreamId } from 'lib/types/utility-types';
 import { dbMigrationQueries } from '../../utils/databaseQueries';
+import { State } from 'lib/types/event-sourcing/state';
 
 type Constructor<T = any> = new (...args: any[]) => T;
 
@@ -22,9 +24,9 @@ export function helpingMethods<T extends Constructor>(
     }
 
     async createOrUpdateSnapshot(
-      streamId: number,
+      streamId: StreamId,
       version: number,
-      state: any
+      state: State
     ): Promise<void> {
       const client = await this.pool.connect();
       try {
@@ -62,7 +64,7 @@ export function helpingMethods<T extends Constructor>(
     }
 
     async createOrUpdateStreamTable(
-      eventType: string,
+      eventType: EventType,
       items: any[]
     ): Promise<void> {
       const client = await this.pool.connect();
@@ -91,7 +93,7 @@ export function helpingMethods<T extends Constructor>(
       }
     }
 
-    async getSnapshot(streamId: string): Promise<any> {
+    async getSnapshot(streamId: StreamId): Promise<any> {
       const client = await this.pool.connect();
       try {
         const result = await client.query(
@@ -100,7 +102,7 @@ export function helpingMethods<T extends Constructor>(
         );
 
         if (result.rows.length > 0) {
-          return result.rows[0];
+          return result.rows[0].state;
         } else {
           return null;
         }
@@ -111,39 +113,6 @@ export function helpingMethods<T extends Constructor>(
       }
     }
 
-    async createOrUpdateStreamTableBySnapshot(
-      snapshot: any,
-      items: any[]
-    ): Promise<void> {
-      const client = await this.pool.connect();
-      try {
-        let streamId = snapshot.streamId;
-        switch (streamId) {
-          case 'Billboard':
-            for (const item of items) {
-              const { billboardTitle, billboardImageUrl } = item;
-              await this.registerBillboard({
-                billboardTitle,
-                billboardImageUrl,
-              });
-            }
-            break;
-          case 'Category':
-            for (const item of items) {
-              const { categoryName, billboardId } = item;
-              await this.registerCategory({ categoryName, billboardId });
-            }
-            break;
-        }
-      } catch (error: any) {
-        console.error(
-          'Error creating/updating stream table by snapshot state:',
-          error.message
-        );
-      } finally {
-        client.release();
-      }
-    }
     // ----------- Event sourcing helping functions ends here ------------
   };
 }
