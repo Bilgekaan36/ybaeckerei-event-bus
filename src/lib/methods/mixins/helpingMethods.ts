@@ -72,17 +72,31 @@ export function helpingMethods<T extends Constructor>(
         switch (eventType) {
           case 'BillboardRegistered':
             for (const item of items) {
-              const { billboardTitle, billboardImageUrl } = item;
-              await this.registerBillboard({
-                billboardTitle,
-                billboardImageUrl,
-              });
+              const { billboardId, billboardTitle, billboardImageUrl } = item;
+              // Check if a billboard with the given title already exists
+              const existingBillboardResult = await client.query(
+                'SELECT * FROM "Billboard" WHERE "billboardTitle" = $1',
+                [billboardTitle]
+              );
+              if (existingBillboardResult.rows.length === 0) {
+                await this.registerBillboard({
+                  billboardId,
+                  billboardTitle,
+                  billboardImageUrl,
+                });
+              }
             }
             break;
           case 'CategoryRegistered':
             for (const item of items) {
               const { categoryName, billboardId } = item;
-              await this.registerCategory({ categoryName, billboardId });
+              const existingCategoryResult = await client.query(
+                'SELECT * FROM "Category" WHERE "categoryName" = $1',
+                [categoryName]
+              );
+              if (existingCategoryResult.rows.length === 0) {
+                await this.registerCategory({ categoryName, billboardId });
+              }
             }
             break;
         }
@@ -108,6 +122,22 @@ export function helpingMethods<T extends Constructor>(
         }
       } catch (error: any) {
         console.error('Error getting snapshot:', error.message);
+      } finally {
+        client.release();
+      }
+    }
+
+    async getAllEvents(streamId: StreamId): Promise<any> {
+      const client = await this.pool.connect();
+      try {
+        const result = await client.query(
+          'SELECT * FROM "Event" WHERE "streamId" = $1 ORDER BY version',
+          [streamId]
+        );
+
+        return result.rows;
+      } catch (error: any) {
+        console.error('Error getting all events:', error.message);
       } finally {
         client.release();
       }

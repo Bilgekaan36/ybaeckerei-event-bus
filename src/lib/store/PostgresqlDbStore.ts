@@ -7,6 +7,7 @@ import { eventHandlers } from '../utils/eventHandlers';
 import { State } from 'lib/types/event-sourcing/state';
 import { Event } from 'lib/types/event-sourcing/event';
 import { StreamId } from 'lib/types/utility-types';
+import { v4 as uuidv4 } from 'uuid';
 
 const mixinMethods = helpingMethods(
   registrationMethods(editMethods(removeMethods(class {})))
@@ -32,10 +33,13 @@ export class PostgresqlDbStore extends mixinMethods {
   }
 
   // ----------- Event sourcing main methods begins here ------------
+
   async storeEvent(streamId: StreamId, data: any): Promise<void> {
     const client = await this.pool.connect();
 
     try {
+      await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+
       const result: QueryResult = await client.query(
         'SELECT MAX(version) as max_version FROM "Event" WHERE "streamId" = $1',
         [streamId]
@@ -43,12 +47,46 @@ export class PostgresqlDbStore extends mixinMethods {
 
       const maxVersion = result.rows[0].max_version || 0;
 
-      await client.query(
-        'INSERT INTO "Event" ("streamId", version, data) VALUES ($1, $2, $3)',
-        [streamId, Number(maxVersion) + 1, data]
-      );
+      switch (streamId) {
+        case 'Billboard':
+          const billboardTitle = data.billboardTitle;
+
+          // Check if there is an event with the same streamId, billboardTitle, and the max version
+          const existingBillboardIdResult = await client.query(
+            'SELECT DISTINCT data->>\'billboardId\' as existing_billboard_id FROM "Event" WHERE "streamId" = $1 AND data->>\'billboardTitle\' = $2',
+            [streamId, billboardTitle]
+          );
+
+          const existingBillboardId =
+            existingBillboardIdResult.rows[0]?.existing_billboard_id;
+          // Use the existing billboardId or generate a new one
+          const newBillboardId = existingBillboardId
+            ? existingBillboardId
+            : uuidv4();
+
+          // Set the "billboardId" in the data
+          data.billboardId = newBillboardId;
+
+          // Insert the event
+          await client.query(
+            'INSERT INTO "Event" ("streamId", version, data) VALUES ($1, $2, $3)',
+            [streamId, Number(maxVersion) + 1, data]
+          );
+          break;
+        case 'Category':
+          // Insert the event for other streams
+          await client.query(
+            'INSERT INTO "Event" ("streamId", version, data) VALUES ($1, $2, $3)',
+            [streamId, Number(maxVersion) + 1, data]
+          );
+          break;
+        // Add more cases for other streams if needed
+      }
+
+      await client.query('COMMIT');
     } catch (error: any) {
       // Handle/store the error as needed
+      await client.query('ROLLBACK');
       console.error('Error storing event:', error.message);
     } finally {
       client.release();
@@ -63,7 +101,8 @@ export class PostgresqlDbStore extends mixinMethods {
     const client = await this.pool.connect();
 
     try {
-      let currentState: State | null = null;
+      await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      let currentState: State = { items: [], version: 0 };
 
       // Check for existing snapshot for the given streamId
       const snapshotResult = await client.query(
@@ -97,18 +136,24 @@ export class PostgresqlDbStore extends mixinMethods {
         } else {
           console.error(`No handler found for type: ${row.data.type}`);
         }
+        const existingSnapshotMaxVersionResult = await client.query(
+          'SELECT MAX(version) as max_version FROM "Snapshot" WHERE "streamId" = $1',
+          [streamId]
+        );
+        const existingSnapshotMaxVersion =
+          existingSnapshotMaxVersionResult.rows[0].max_version || 0;
 
-        if (currentState !== null && currentState.version % 10 === 0) {
-          // Create or update a snapshot every 10 versions
+        if (
+          currentState !== null &&
+          currentState.version % 10 === 0 &&
+          Number(currentState.version) > Number(existingSnapshotMaxVersion)
+        ) {
           await this.createOrUpdateSnapshot(
             streamId,
             currentState.version,
             currentState
           );
           snapshotVersion = currentState.version; // Update snapshotVersion to the new version
-          console.log(
-            `Created snapshot for stream ${streamId} at version ${currentState.version}`
-          );
         }
 
         if (
@@ -127,12 +172,14 @@ export class PostgresqlDbStore extends mixinMethods {
           );
         }
       }
+      await client.query('COMMIT'); // Commit the transaction
     } catch (error: any) {
+      // Handle/store the error as needed
+      await client.query('ROLLBACK');
       console.error('Error applying events and updating state:', error.message);
     } finally {
       client.release();
     }
   }
-
   // ----------- Event sourcing main methods ends here ------------
 }

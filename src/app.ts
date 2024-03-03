@@ -11,7 +11,9 @@ import { BullAdapter } from '@bull-board/api/bullAdapter';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { PostgresqlDbStore } from './lib/store/PostgresqlDbStore';
-import { EventJob } from 'lib/types/event-sourcing/event-job';
+import { EventJob } from './lib/types/event-sourcing/event-job';
+import { StreamId } from './lib/types/utility-types';
+import { eventHandlers } from './lib/utils/eventHandlers';
 
 const serverAdapter = new ExpressAdapter();
 // Reuse the ioredis instance
@@ -38,6 +40,13 @@ const store = new PostgresqlDbStore({
     queues: [new BullAdapter(eventQueue)],
     serverAdapter: serverAdapter,
   });
+
+  const initializeAllEvents = async (streamId: StreamId) => {
+    store.applyEventsAndUpdateState(streamId, eventHandlers);
+  };
+
+  await initializeAllEvents('Billboard');
+  await initializeAllEvents('Category');
 
   const api = express();
 

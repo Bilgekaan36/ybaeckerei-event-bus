@@ -128,33 +128,30 @@ export function registrationMethods<T extends Constructor>(
       }
     }
 
-    async registerBillboard({ billboardTitle, billboardImageUrl }: IBillboard) {
+    async registerBillboard({
+      billboardId,
+      billboardTitle,
+      billboardImageUrl,
+    }: IBillboard) {
       const client = await this.pool.connect();
-
       try {
         await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
 
-        // SQL query for SELECT to check for existing data
-        const selectQuery = `
-          SELECT "billboardTitle", "billboardImageUrl"
-          FROM "Billboard"
-          WHERE "billboardTitle" = $1
-          FOR UPDATE;
-        `;
-
-        const selectResult = await client.query(selectQuery, [billboardTitle]);
-
-        if (selectResult.rows.length === 0) {
-          // SQL query for INSERT
-          const insertQuery = `
-            INSERT INTO "Billboard"("billboardTitle", "billboardImageUrl") 
-            VALUES ($1, $2);
+        // If no billboard with the title exists, proceed with the registration
+        // SQL query for INSERT
+        const insertQuery = `
+            INSERT INTO "Billboard"("billboardId", "billboardTitle", "billboardImageUrl") 
+            VALUES ($1, $2, $3);
           `;
 
-          // Execute the INSERT query
-          await client.query(insertQuery, [billboardTitle, billboardImageUrl]);
-          console.log('Billboard successfully registered.');
-        }
+        // Execute the INSERT query
+        await client.query(insertQuery, [
+          billboardId,
+          billboardTitle,
+          billboardImageUrl,
+        ]);
+        console.log(`Billboard ${billboardTitle} successfully registered.`);
+
         await client.query('COMMIT');
       } catch (error: any) {
         await client.query('ROLLBACK');
@@ -169,27 +166,16 @@ export function registrationMethods<T extends Constructor>(
       try {
         await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
 
-        // SQL query for SELECT to check for existing data
-        const selectQuery = `
-          SELECT "categoryName", "billboardId"
-          FROM "Category"
-          WHERE "categoryName" = $1
-          FOR UPDATE;
-        `;
-
-        const selectResult = await client.query(selectQuery, [categoryName]);
-
-        if (selectResult.rows.length === 0) {
-          // SQL query for INSERT
-          const insertQuery = `
+        // SQL query for INSERT
+        const insertQuery = `
           INSERT INTO "Category"("categoryName", "billboardId") 
           VALUES ($1, $2)
           `;
 
-          // Execute the INSERT query
-          await client.query(insertQuery, [categoryName, billboardId]);
-          console.log('Category successfully registered.');
-        }
+        // Execute the INSERT query
+        await client.query(insertQuery, [categoryName, billboardId]);
+        console.log(`Category ${categoryName} successfully registered.`);
+
         await client.query('COMMIT');
       } catch (error: any) {
         await client.query('ROLLBACK');

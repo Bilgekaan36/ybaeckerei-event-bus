@@ -30,14 +30,16 @@ export const dbMigrationQueries = async (client: any) => {
         city VARCHAR(255) NOT NULL
     );`
   );
-  await client.query(
-    `CREATE TABLE IF NOT EXISTS "Billboard"
-    (
-        "billboardId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(), 
-        "billboardTitle" VARCHAR(255) NOT NULL, 
-        "billboardImageUrl" VARCHAR(255) NOT NULL
-    );`
+
+  await client.query(`
+  CREATE TABLE IF NOT EXISTS "Billboard"
+  (
+    "billboardId" UUID PRIMARY KEY,
+    "billboardTitle" VARCHAR(255) NOT NULL,
+    "billboardImageUrl" VARCHAR(255) NOT NULL,
+    UNIQUE ("billboardId")
   );
+`);
 
   await client.query(
     `CREATE TABLE IF NOT EXISTS "Category"

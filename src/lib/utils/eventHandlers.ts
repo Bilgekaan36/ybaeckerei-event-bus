@@ -5,21 +5,22 @@ export const eventHandlers: Record<string, any> = {
   BillboardRegistered: (state: State, event: Event) => {
     state = state || { items: [], version: 0 };
     const billboard = {
+      billboardId: event.data.billboardId,
       billboardTitle: event.data.billboardTitle,
       billboardImageUrl: event.data.billboardImageUrl,
     };
     // Check if the billboard with the same title is already included
     const isBillboardIncluded = state.items.some(
-      (b: { billboardTitle: string }) =>
-        b.billboardTitle === billboard.billboardTitle
+      (b: { billboardId: string }) => b.billboardId === billboard.billboardId
     );
 
     if (!isBillboardIncluded) {
       // If the billboard is not included, add it
       state.items = [...state.items, billboard];
     } else {
-      state.items = state.items.map((item: { billboardTitle: string }) =>
-        item.billboardTitle === billboard.billboardTitle ? billboard : item
+      // If the billboard is included, update it
+      state.items = state.items.map((item: { billboardId: string }) =>
+        item.billboardId === billboard.billboardId ? billboard : item
       );
     }
     state.version = event.version;
