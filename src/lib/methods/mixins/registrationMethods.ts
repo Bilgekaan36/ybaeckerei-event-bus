@@ -128,29 +128,45 @@ export function registrationMethods<T extends Constructor>(
       }
     }
 
-    async registerBillboard({
-      billboardId,
-      billboardTitle,
-      billboardImageUrl,
-    }: IBillboard) {
+    async registerBillboard(items: IBillboard[]) {
       const client = await this.pool.connect();
       try {
         await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+        console.log('billboardItems', items);
 
-        // If no billboard with the title exists, proceed with the registration
-        // SQL query for INSERT
-        const insertQuery = `
+        // Step 1: Delete rows not present in the current state
+        if (items.length > 0) {
+          const deleteQuery = `
+                    DELETE FROM "Billboard"
+                    WHERE "billboardId" NOT IN (${items
+                      .map((item) => `'${item.billboardId}'`)
+                      .join(',')})
+                `;
+          await client.query(deleteQuery);
+
+          // Step 2: Insert or update the current state
+          for (const item of items) {
+            const { billboardId, billboardTitle, billboardImageUrl } = item;
+            // SQL query for INSERT
+            const insertQuery = `
             INSERT INTO "Billboard"("billboardId", "billboardTitle", "billboardImageUrl") 
-            VALUES ($1, $2, $3);
+            VALUES ($1, $2, $3)
+            ON CONFLICT ("billboardId") DO UPDATE
+            SET "billboardTitle" = $2, "billboardImageUrl" = $3;
           `;
-
-        // Execute the INSERT query
-        await client.query(insertQuery, [
-          billboardId,
-          billboardTitle,
-          billboardImageUrl,
-        ]);
-        console.log(`Billboard ${billboardTitle} successfully registered.`);
+            // Execute the INSERT query
+            await client.query(insertQuery, [
+              billboardId,
+              billboardTitle,
+              billboardImageUrl,
+            ]);
+            console.log(`Billboard ${billboardTitle} successfully registered.`);
+          }
+        } else {
+          // STEP 3: Delete all rows if the current state is empty
+          const deleteBillboardQuery = `DELETE FROM "Billboard"`;
+          await client.query(deleteBillboardQuery);
+        }
 
         await client.query('COMMIT');
       } catch (error: any) {
@@ -161,20 +177,66 @@ export function registrationMethods<T extends Constructor>(
       }
     }
 
-    async registerCategory({ categoryName, billboardId }: ICategory) {
+    async registerCategory(items: ICategory[]) {
       const client = await this.pool.connect();
+      console.log('categoryItems', items);
       try {
         await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+        // Step 1: Delete rows not present in the current state
+        if (items.length > 0) {
+          const deleteQuery = `
+            DELETE FROM "Category"
+            WHERE "categoryId" NOT IN (${items
+              .map((item) => `'${item.categoryId}'`)
+              .join(',')})
+        `;
+          await client.query(deleteQuery);
 
-        // SQL query for INSERT
-        const insertQuery = `
-          INSERT INTO "Category"("categoryName", "billboardId") 
-          VALUES ($1, $2)
-          `;
+          // Step 2: Insert or update the current state
+          for (const item of items) {
+            const { categoryId, categoryName, billboardId } = item;
 
-        // Execute the INSERT query
-        await client.query(insertQuery, [categoryName, billboardId]);
-        console.log(`Category ${categoryName} successfully registered.`);
+            const billboardTitleQuery = `
+            SELECT "billboardTitle"
+            FROM "Billboard"
+            WHERE "billboardId" = $1;
+            `;
+
+            const resultBillboardTitle = await client.query(
+              billboardTitleQuery,
+              [billboardId]
+            );
+
+            if (resultBillboardTitle.rows.length > 0) {
+              const billboardTitle =
+                resultBillboardTitle.rows[0].billboardTitle;
+
+              // SQL query for UPDATE or INSERT
+              const upsertQuery = `
+              INSERT INTO "Category"("categoryId", "categoryName", "billboardTitle", "billboardId") 
+              VALUES ($1, $2, $3, $4)
+              ON CONFLICT("categoryId") DO UPDATE
+              SET "categoryName" = $2, "billboardTitle" = $3, "billboardId" = $4
+              `;
+
+              // Execute the UPDATE or INSERT query
+              await client.query(upsertQuery, [
+                categoryId,
+                categoryName,
+                billboardTitle,
+                billboardId,
+              ]);
+            } else {
+              throw new Error('Billboard not found.');
+            }
+
+            console.log(`Category ${categoryName} successfully registered.`);
+          }
+        } else {
+          // STEP 3: Delete all rows if the current state is empty
+          const deleteCategoryQuery = `DELETE FROM "Category"`;
+          await client.query(deleteCategoryQuery);
+        }
 
         await client.query('COMMIT');
       } catch (error: any) {

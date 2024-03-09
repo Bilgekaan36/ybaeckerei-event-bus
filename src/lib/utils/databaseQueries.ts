@@ -16,7 +16,8 @@ export const dbMigrationQueries = async (client: any) => {
   CREATE TABLE IF NOT EXISTS "Snapshot" (
     "streamId" VARCHAR(255) NOT NULL,
     version BIGINT NOT NULL,
-    state JSONB
+    state JSONB,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )
 `);
 
@@ -27,7 +28,8 @@ export const dbMigrationQueries = async (client: any) => {
         "storeTitle" VARCHAR(255) NOT NULL,
         "street" VARCHAR(255) NOT NULL,
         "postalCode" INT NOT NULL,
-        city VARCHAR(255) NOT NULL
+        city VARCHAR(255) NOT NULL,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );`
   );
 
@@ -37,6 +39,7 @@ export const dbMigrationQueries = async (client: any) => {
     "billboardId" UUID PRIMARY KEY,
     "billboardTitle" VARCHAR(255) NOT NULL,
     "billboardImageUrl" VARCHAR(255) NOT NULL,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE ("billboardId")
   );
 `);
@@ -44,9 +47,12 @@ export const dbMigrationQueries = async (client: any) => {
   await client.query(
     `CREATE TABLE IF NOT EXISTS "Category"
     (
-        "categoryId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(), 
+        "categoryId" UUID PRIMARY KEY,
         "categoryName" VARCHAR(255) NOT NULL, 
-        "billboardId" UUID,
+        "billboardTitle" VARCHAR(255) NOT NULL,
+        "billboardId" UUID NOT NULL,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE ("categoryId"),
         FOREIGN KEY ("billboardId") REFERENCES "Billboard"("billboardId")
     );`
   );
@@ -56,7 +62,8 @@ export const dbMigrationQueries = async (client: any) => {
     (
         "imageId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(), 
         "imageTitle" VARCHAR(255) NOT NULL, 
-        "imageUrl" VARCHAR(255) NOT NULL
+        "imageUrl" VARCHAR(255) NOT NULL,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );`
   );
   await client.query(
@@ -72,7 +79,8 @@ export const dbMigrationQueries = async (client: any) => {
     `CREATE TABLE IF NOT EXISTS "Variant"
       (
         "variantId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        "variantTitle" VARCHAR(255) NOT NULL
+        "variantTitle" VARCHAR(255) NOT NULL,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`
   );
   await client.query(
@@ -80,7 +88,8 @@ export const dbMigrationQueries = async (client: any) => {
     (
         "sizeId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         "sizeValue" SMALLINT NOT NULL,
-        "sizeType" VARCHAR(255) NOT NULL
+        "sizeType" VARCHAR(255) NOT NULL,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );`
   );
   await client.query(
@@ -94,7 +103,8 @@ export const dbMigrationQueries = async (client: any) => {
         "variantId" UUID,
         FOREIGN KEY ("variantId") REFERENCES "Variant"("variantId"),
         "categoryId" UUID,
-        FOREIGN KEY ("categoryId") REFERENCES "Category"("categoryId")
+        FOREIGN KEY ("categoryId") REFERENCES "Category"("categoryId"),
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`
   );
   await client.query(
@@ -133,7 +143,8 @@ export const dbMigrationQueries = async (client: any) => {
         email VARCHAR(255) UNIQUE NOT NULL,
         "phoneNumber" VARCHAR(20),
         "shippingAddress" TEXT,
-        "billingAddress" TEXT
+        "billingAddress" TEXT,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );`
   );
 
@@ -214,7 +225,8 @@ export const dbMigrationQueries = async (client: any) => {
         "productId" UUID NOT NULL,
         FOREIGN KEY ("productId") REFERENCES "Product"("productId"),
         "customerId" UUID NOT NULL, 
-        FOREIGN KEY ("customerId") REFERENCES "Customer"("customerId")
+        FOREIGN KEY ("customerId") REFERENCES "Customer"("customerId"),
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );`
   );
 };

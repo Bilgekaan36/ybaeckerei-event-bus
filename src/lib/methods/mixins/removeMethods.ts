@@ -26,43 +26,33 @@ export function removeMethods<T extends Constructor>(base: T): Constructor & T {
     }
 
     async removeBillboard({ billboardId }: { billboardId: string }) {
-      const selectQuery = `
-              SELECT "billboardId"
-              FROM "Billboard"
-              WHERE "billboardId" = $1;
-              `;
       const removeQuery = `
               DELETE FROM "Billboard"
               WHERE "billboardId" = $1;
               `;
 
-      const foundedBillboard = await this.pool.query(selectQuery, [
-        billboardId,
-      ]);
-      if (foundedBillboard.rows.length > 0) {
-        await this.pool.query(removeQuery, [billboardId]);
-      } else {
-        throw new Error('Billboard not exists.');
-      }
+      await this.pool.query(removeQuery, [billboardId]);
     }
 
     async removeCategory({ categoryId }: { categoryId: string }) {
-      const selectQuery = `
-                SELECT "categoryId"
-                FROM "Category"
-                WHERE "categoryId" = $1;
-                `;
-      const removeQuery = `
-                DELETE FROM "Category"
-                WHERE "categoryId" = $1;
-                `;
+      const client = await this.pool.connect();
+      // try {
+      //   await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
 
-      const foundedCategory = await this.pool.query(selectQuery, [categoryId]);
-      if (foundedCategory.rows.length > 0) {
-        await this.pool.query(removeQuery, [categoryId]);
-      } else {
-        throw new Error('Category not exists.');
-      }
+      //   const removeQuery = `
+      //           DELETE FROM "Category"
+      //           WHERE "categoryId" = $1;
+      //           `;
+
+      //   await this.pool.query(removeQuery, [categoryId]);
+      //   console.log('Category removed.');
+      //   await client.query('COMMIT');
+      // } catch (error: any) {
+      //   await client.query('ROLLBACK');
+      //   console.error('Error remove category:', error.message);
+      // } finally {
+      //   client.release();
+      // }
     }
 
     async removeCustomer({ customerId }: { customerId: string }) {
