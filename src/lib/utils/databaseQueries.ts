@@ -86,10 +86,11 @@ export const dbMigrationQueries = async (client: any) => {
   await client.query(
     `CREATE TABLE IF NOT EXISTS "Size"
     (
-        "sizeId" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        "sizeValue" SMALLINT NOT NULL,
+        "sizeId" UUID PRIMARY KEY,
+        "sizeValue" DECIMAL(10, 3) NOT NULL,
         "sizeType" VARCHAR(255) NOT NULL,
-        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE ("sizeId")
     );`
   );
   await client.query(

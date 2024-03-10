@@ -47,6 +47,7 @@ const store = new PostgresqlDbStore({
 
   await initializeAllEvents('Billboard');
   await initializeAllEvents('Category');
+  await initializeAllEvents('Size');
 
   const api = express();
 

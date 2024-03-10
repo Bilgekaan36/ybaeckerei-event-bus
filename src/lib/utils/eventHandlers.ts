@@ -65,6 +65,7 @@ export const eventHandlers: Record<EventType, any> = {
             ...state.items.slice(0, indexToRemove),
             ...state.items.slice(indexToRemove + 1),
           ];
+          console.log(`Billboard ${billboardIdToRemove} removed.`);
         }
 
         state.version = event.version;
@@ -137,6 +138,7 @@ export const eventHandlers: Record<EventType, any> = {
             ...state.items.slice(0, indexToRemove),
             ...state.items.slice(indexToRemove + 1),
           ];
+          console.log(`Category ${categoryIdToRemove} removed.`);
         }
         state.version = event.version;
       }
@@ -145,7 +147,111 @@ export const eventHandlers: Record<EventType, any> = {
       await client.query('ROLLBACK');
       console.error('Error handling CategoryRemoved event:', error.message);
     }
-
     return state;
   },
+  SizeRegistered: async (client: any, state: State, event: Event) => {
+    state = state || { items: [], version: 0 };
+
+    const size = {
+      sizeId: event.data.sizeId,
+      sizeType: event.data.sizeType,
+      sizeValue: event.data.sizeValue,
+    };
+    // Check if the size with the same id, type, and value is already included
+    const isSizeIncluded = state.items.some(
+      (item: { sizeId: string; sizeType: string; sizeValue: number }) =>
+        item.sizeId === size.sizeId ||
+        (item.sizeType === size.sizeType && item.sizeValue === size.sizeValue)
+    );
+
+    if (!isSizeIncluded) {
+      // If the size is not included, add it
+      state.items = [...state.items, size];
+    } else {
+      // If the size is included, update it
+      state.items = state.items.map(
+        (item: { sizeId: string; sizeType: string; sizeValue: number }) =>
+          item.sizeId === size.sizeId ||
+          (item.sizeType === size.sizeType && item.sizeValue === size.sizeValue)
+            ? size
+            : item
+      );
+    }
+
+    // Merge multiple items with the same sizeId (if any)
+    const uniqueItems = state.items.reduce((acc: any[], currentItem: any) => {
+      const existingItem = acc.find(
+        (item) => item.sizeId === currentItem.sizeId
+      );
+      if (existingItem) {
+        existingItem.sizeValue = currentItem.sizeValue;
+      } else {
+        acc.push({ ...currentItem });
+      }
+      return acc;
+    }, []);
+
+    state.items = uniqueItems;
+
+    state.version = event.version;
+    return state;
+  },
+  SizeRemoved: async (client: any, state: State, event: Event) => {
+    state = state || { items: [], version: 0 };
+
+    try {
+      await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+
+      const sizeIdToRemove = event.data.sizeId;
+
+      // Check if any ProductSize references the Size to be removed
+      const isSizesReferencedQuery = `
+          SELECT COUNT(*) AS count
+          FROM "ProductSize"
+          WHERE "sizeId" = $1
+      `;
+
+      const result = await client.query(isSizesReferencedQuery, [
+        sizeIdToRemove,
+      ]);
+      const isCategoryReferenced = result.rows[0].count > 0;
+
+      if (isCategoryReferenced) {
+        console.error(
+          `Cannot remove category ${isCategoryReferenced} as it is referenced by a product.`
+        );
+        // You may choose to handle this situation differently, such as throwing an error.
+        // For now, the removal is prevented.
+      } else {
+        const indexToRemove = state.items.findIndex(
+          (item) => item.sizeId === sizeIdToRemove
+        );
+
+        if (indexToRemove !== -1) {
+          // If working with immutable state, create a new array without the removed item
+          state.items = [
+            ...state.items.slice(0, indexToRemove),
+            ...state.items.slice(indexToRemove + 1),
+          ];
+          console.log(`Size ${sizeIdToRemove} removed.`);
+        }
+        state.version = event.version;
+      }
+      await client.query('COMMIT');
+    } catch (error: any) {
+      await client.query('ROLLBACK');
+      console.error('Error handling SizeRemoved event:', error.message);
+    }
+    return state;
+  },
+  CustomerRegistered: undefined,
+  CustomerRemoved: undefined,
+  ImageRegistered: undefined,
+  ImageRemoved: undefined,
+  ProductRegistered: undefined,
+  ProductRemoved: undefined,
+  StoreRegistered: undefined,
+  StoreRemoved: undefined,
+  VariantRegistered: undefined,
+  VariantRemoved: undefined,
 };

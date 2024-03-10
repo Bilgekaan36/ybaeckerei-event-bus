@@ -125,12 +125,6 @@ export class PostgresqlDbStore extends mixinMethods {
           snapshotVersion = currentState.version; // Update snapshotVersion to the new version
         }
       }
-      // TODO: Update createOrUpdateStreamTable  and get also data from snapshot table when events starting from the snapshot
-      console.log(
-        'currentState.version',
-        currentState.version,
-        snapshotVersion
-      );
       await this.createOrUpdateStreamTable(streamId, currentState.items);
       await client.query('COMMIT'); // Commit the transaction
     } catch (error: any) {

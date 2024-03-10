@@ -25,6 +25,9 @@ export function streamTableUpdaterMethod<T extends Constructor>(
         case 'Category':
           await this.registerCategory(items);
           break;
+        case 'Size':
+          await this.registerSize(items);
+          break;
       }
     }
   };

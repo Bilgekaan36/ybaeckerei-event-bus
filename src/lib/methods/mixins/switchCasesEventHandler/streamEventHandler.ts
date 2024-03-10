@@ -86,6 +86,42 @@ export function streamEventHandlerMethod<T extends Constructor>(
             [streamId, Number(maxVersion) + 1, data]
           );
           break;
+        case 'Size':
+          let existingSizeIdResult = null;
+
+          if (data.sizeValue && data.sizeType) {
+            const sizeValue = data.sizeValue;
+            const sizeType = data.sizeType;
+
+            // Check if there is an event with the same streamId, sizeValue, sizeType, and the max version
+            existingSizeIdResult = await client.query(
+              "SELECT DISTINCT data->>'sizeId' as existing_size_id FROM \"Event\" WHERE \"streamId\" = $1 AND data->>'sizeValue' = $2 AND data->>'sizeType' = $3",
+              [streamId, sizeValue, sizeType]
+            );
+          } else if (data.sizeId) {
+            const sizeId = data.sizeId;
+            // Check if there is an event with the same streamId, sizeId, and the max version
+            existingSizeIdResult = await client.query(
+              'SELECT DISTINCT data->>\'sizeId\' as existing_size_id FROM "Event" WHERE "streamId" = $1 AND data->>\'sizeId\' = $2',
+              [streamId, sizeId]
+            );
+          }
+
+          const existingSizeId =
+            existingSizeIdResult?.rows[0]?.existing_size_id;
+
+          // Use the existing sizeId or generate a new one
+          const newSizeId = existingSizeId ? existingSizeId : uuidv4();
+
+          // Set the "sizeId" in the data
+          data.sizeId = newSizeId;
+
+          // Insert the event
+          await client.query(
+            'INSERT INTO "Event" ("streamId", version, data) VALUES ($1, $2, $3)',
+            [streamId, Number(maxVersion) + 1, data]
+          );
+          break;
       }
     }
   };

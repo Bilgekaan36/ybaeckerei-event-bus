@@ -74,32 +74,49 @@ export function registrationMethods<T extends Constructor>(
       }
     }
 
-    async registerSize({ sizeValue, sizeType }: ISize) {
-      // SQL query for SELECT to check for existing data
-      const selectQuery = `
-          SELECT "sizeValue", "sizeType"
-          FROM "Size"
-          WHERE "sizeValue" = $1
-          AND "sizeType" = $2;
-          `;
+    async registerSize(items: ISize[]) {
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
 
-      // SQL query for INSERT
-      const insertQuery = `
-          INSERT INTO "Size"("sizeValue", "sizeType") 
-          VALUES ($1, $2)
-          `;
+        // Step 1: Delete rows not present in the current state
+        if (items.length > 0) {
+          const deleteQuery = `
+                    DELETE FROM "Size"
+                    WHERE "sizeId" NOT IN (${items
+                      .map((item) => `'${item.sizeId}'`)
+                      .join(',')})
+                `;
+          await client.query(deleteQuery);
 
-      // Execute the SELECT query
-      const foundedCategory = await this.pool.query(selectQuery, [
-        sizeValue,
-        sizeType,
-      ]);
-      // Check if data already exists
-      if (foundedCategory.rows.length > 0) {
-        throw new Error('Size already exists.');
-      } else {
-        // Execute the INSERT query if data doesn't exist
-        await this.pool.query(insertQuery, [sizeValue, sizeType]);
+          // Step 2: Insert or update the current state
+          for (const item of items) {
+            const { sizeId, sizeType, sizeValue } = item;
+            // SQL query for INSERT
+            const insertQuery = `
+            INSERT INTO "Size"("sizeId", "sizeType", "sizeValue") 
+            VALUES ($1, $2, $3)
+            ON CONFLICT ("sizeId") DO UPDATE
+            SET "sizeType" = $2, "sizeValue" = $3;
+          `;
+            // Execute the INSERT query
+            await client.query(insertQuery, [sizeId, sizeType, sizeValue]);
+            console.log(
+              `Size ${sizeValue + sizeType} successfully registered.`
+            );
+          }
+        } else {
+          // STEP 3: Delete all rows if the current state is empty
+          const deleteSizeQuery = `DELETE FROM "Size"`;
+          await client.query(deleteSizeQuery);
+        }
+
+        await client.query('COMMIT');
+      } catch (error: any) {
+        await client.query('ROLLBACK');
+        console.error('Error registering Size:', error.message);
+      } finally {
+        client.release();
       }
     }
 
@@ -132,7 +149,6 @@ export function registrationMethods<T extends Constructor>(
       const client = await this.pool.connect();
       try {
         await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-        console.log('billboardItems', items);
 
         // Step 1: Delete rows not present in the current state
         if (items.length > 0) {
@@ -179,7 +195,7 @@ export function registrationMethods<T extends Constructor>(
 
     async registerCategory(items: ICategory[]) {
       const client = await this.pool.connect();
-      console.log('categoryItems', items);
+
       try {
         await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
         // Step 1: Delete rows not present in the current state

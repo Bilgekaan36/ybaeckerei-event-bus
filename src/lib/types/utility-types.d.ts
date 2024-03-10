@@ -1,6 +1,27 @@
-export type StreamId = 'Billboard' | 'Category';
+export type StreamId =
+  | 'Billboard'
+  | 'Category'
+  | 'Size'
+  | 'Customer'
+  | 'Order'
+  | 'Product'
+  | 'Image'
+  | 'Store'
+  | 'Variant';
 export type EventType =
   | 'BillboardRegistered'
   | 'BillboardRemoved'
   | 'CategoryRegistered'
-  | 'CategoryRemoved';
+  | 'CategoryRemoved'
+  | 'SizeRegistered'
+  | 'SizeRemoved'
+  | 'CustomerRegistered'
+  | 'CustomerRemoved'
+  | 'ImageRegistered'
+  | 'ImageRemoved'
+  | 'ProductRegistered'
+  | 'ProductRemoved'
+  | 'StoreRegistered'
+  | 'StoreRemoved'
+  | 'VariantRegistered'
+  | 'VariantRemoved';
